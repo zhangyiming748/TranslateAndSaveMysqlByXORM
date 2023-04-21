@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"github.com/zhangyiming748/goini"
 	"golang.org/x/exp/slog"
 	"io"
 	"os"
@@ -17,8 +18,6 @@ import (
 const (
 	configPath = "./conf.ini"
 )
-
-var Mylog *slog.Logger
 
 func SetLog(level string) {
 	var opt slog.HandlerOptions
@@ -58,12 +57,8 @@ func SetLog(level string) {
 		panic(err)
 	}
 	//defer logf.Close() //如果不关闭可能造成内存泄露
-	Mylog = slog.New(opt.NewJSONHandler(io.MultiWriter(logf, os.Stdout)))
-	slog.SetDefault(Mylog)
-}
-func init() {
-	l := os.Getenv("LEVEL")
-	SetLog(l)
+	mylog := slog.New(opt.NewJSONHandler(io.MultiWriter(logf, os.Stdout)))
+	slog.SetDefault(mylog)
 }
 
 type RES struct {
@@ -77,26 +72,33 @@ type RES struct {
 
 // Verify the endpoint URI and replace the token string with a valid subscription key.
 func main() {
+	l, _ := goini.SetConfig(configPath).GetValue("log", "level")
+	SetLog(l)
+	var Query string
 	if len(os.Args) < 2 {
-		Mylog.Error("参数不正确")
-		return
+		open, err := os.ReadFile("english.txt")
+		if err != nil {
+			return
+		}
+		slog.Info("读文件", slog.String("文件内容", string(open)))
+		Query = string(open)
+	} else {
+		Query = os.Args[1]
 	}
-	Query := os.Args[1]
-
 	w := new(model.Word)
 	w.EnUs = Query
 	word, has, err := w.FindByEnglish()
 	if err != nil {
 		return
 	} else if has {
-		Mylog.Info("查询结果", slog.String("src", Query), slog.String("dst", word.ZhCn))
+		slog.Info("查询结果", slog.String("src", Query), slog.String("dst", word.ZhCn))
 		return
 	}
 	salt := time.Now().Format("0102150405")
 	sign := strings.Join([]string{"20230419001647901", Query, salt, "n08PMyG5RHk_3NUiXTdq"}, "")
-	Mylog.Debug("加密之前", slog.String("拼接的字符串", sign))
+	slog.Debug("加密之前", slog.String("拼接的字符串", sign))
 	signMd5 := getMd5(sign)
-	Mylog.Debug("加密之后", slog.String("拼接的字符串", signMd5))
+	slog.Debug("加密之后", slog.String("拼接的字符串", signMd5))
 	m := map[string]string{
 		"q":     Query,
 		"from":  "en",
@@ -106,7 +108,7 @@ func main() {
 		"sign":  signMd5,
 	}
 	//todo 查询本地数据库 如果存在查询词直接返回
-	Mylog.Debug("请求的参数", slog.Any("param", m))
+	slog.Debug("请求的参数", slog.Any("param", m))
 	get, err := util.HttpGet(nil, m, "http://api.fanyi.baidu.com/api/trans/vip/translate")
 	if err != nil {
 		return
@@ -118,11 +120,11 @@ func main() {
 	}
 	//res.TransResult[0].Dst
 	//pretty.P(string(get))
-
+	fmt.Printf("返回的原文%s", string(get))
 	w.EnUs = res.TransResult[0].Src
 	w.ZhCn = res.TransResult[0].Dst
 	w.CreateOne()
-	Mylog.Info("查询结果", slog.String("src", res.TransResult[0].Src), slog.String("dst", res.TransResult[0].Dst))
+	slog.Info("查询结果", slog.String("src", res.TransResult[0].Src), slog.String("dst", res.TransResult[0].Dst))
 }
 func getMd5(str string) string {
 	data := []byte(str)

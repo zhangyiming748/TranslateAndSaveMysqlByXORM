@@ -8,8 +8,8 @@ import (
 
 type Word struct {
 	Id         int       `xorm:"not null pk autoincr comment('主键id') INT(11)" json:"id"`
-	ZhCn       string    `xorm:"comment('中文词') VARCHAR(255)" json:"zh_cn"`
-	EnUs       string    `xorm:"comment('英文词') VARCHAR(255)" json:"en_us"`
+	ZhCn       string    `xorm:"comment('中文词') TEXT" json:"zh_cn"`
+	EnUs       string    `xorm:"comment('英文词') TEXT" json:"en_us"`
 	UpdateTime time.Time `xorm:"updated comment('更新时间) DateTime" json:"update_time"`
 	CreateTime time.Time `xorm:"created comment('创建时间') DateTime" json:"create_time"`
 	DeleteTime time.Time `xorm:"deleted comment('创建时间') DateTime" json:"delete_time"`
@@ -27,7 +27,7 @@ func (w Word) FindByEnglish() (Word, bool, error) {
 	}
 }
 func (w Word) CreateOne() {
-	//lib.InitMysql()
+	
 	mysql.GetMysqlEngine()
 	insert, err := mysql.GetMysqlEngine().NewSession().Insert(&w)
 	if err != nil {
