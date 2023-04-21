@@ -27,7 +27,7 @@ func (w Word) FindByEnglish() (Word, bool, error) {
 	}
 }
 func (w Word) CreateOne() {
-	
+
 	mysql.GetMysqlEngine()
 	insert, err := mysql.GetMysqlEngine().NewSession().Insert(&w)
 	if err != nil {
