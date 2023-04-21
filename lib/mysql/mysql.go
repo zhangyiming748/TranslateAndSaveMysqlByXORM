@@ -14,9 +14,9 @@ const (
 	configurePath = "./conf.ini"
 )
 
-//var MyEngine *xorm.Engine
+var MyEngine *xorm.Engine
 
-func GetMysqlEngine() *xorm.Engine {
+func GetEngine() *xorm.Engine {
 	conf := goini.SetConfig(configurePath)
 	user, _ := conf.GetValue("mysql", "user")
 	passwd, _ := conf.GetValue("mysql", "passwd")
@@ -26,7 +26,6 @@ func GetMysqlEngine() *xorm.Engine {
 	MyEngine, err := xorm.NewEngine("mysql", src)
 	if err != nil {
 		slog.Error("创建数据库引擎失败", slog.Any("错误信息", err))
-		return nil
 	}
 	err = MyEngine.Ping()
 	if err != nil {
@@ -38,6 +37,6 @@ func GetMysqlEngine() *xorm.Engine {
 	return MyEngine
 }
 
-//func GetSession() *xorm.Session {
-//	return MyEngine.NewSession()
-//}
+func GetSession() *xorm.Session {
+	return MyEngine.NewSession()
+}

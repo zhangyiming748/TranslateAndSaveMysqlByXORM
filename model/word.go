@@ -18,7 +18,7 @@ type Word struct {
 
 func (w Word) FindByWord() (Word, bool, error) {
 	model := Word{}
-	has, err := mysql.GetMysqlEngine().NewSession().Where("en_us =?", w.Other).Get(&model)
+	has, err := mysql.GetEngine().NewSession().Where("other = ?", w.Other).Get(&model)
 	if err != nil {
 		return Word{}, has, err
 	} else if !has {
@@ -29,12 +29,19 @@ func (w Word) FindByWord() (Word, bool, error) {
 }
 
 func (w Word) CreateOne() {
-	mysql.GetMysqlEngine()
-	insert, err := mysql.GetMysqlEngine().NewSession().Insert(&w)
+	insert, err := mysql.GetEngine().NewSession().Insert(&w)
 	if err != nil {
 		slog.Error("word表插入新数据失败", slog.Any("错误信息", err))
 		return
 	} else {
 		slog.Debug("插入新数据成功", slog.Int64("条数", insert))
 	}
+}
+
+func (w Word) DeleteAll() {
+	i, err := mysql.GetEngine().NewSession().Where("1 = 1").Table("word").Delete(&Word{})
+	if err != nil {
+		return
+	}
+	slog.Info("删除记录", slog.Int64("成功条数", i))
 }
