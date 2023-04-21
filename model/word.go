@@ -27,7 +27,15 @@ func (w Word) FindByWord() (Word, bool, error) {
 		return model, has, err
 	}
 }
-
+func (w Word) IfWordExist() {
+	has, err := mysql.GetEngine().NewSession().Exist(w)
+	if err != nil {
+		return
+	}
+	if has {
+		slog.Info("数据库中存在", slog.Any("row", w))
+	}
+}
 func (w Word) CreateOne() {
 	insert, err := mysql.GetEngine().NewSession().Insert(&w)
 	if err != nil {
@@ -45,12 +53,12 @@ func (w Word) DeleteAll() {
 	}
 	slog.Info("删除记录", slog.Int64("成功条数", i))
 }
-func (w Word) GetAll() (words []Word) {
-	get, err := mysql.GetEngine().NewSession().Where("1 = 1").Get(&words)
+func (w Word) GetAll() []Word {
+	words := []Word{}
+	err := mysql.GetEngine().NewSession().Find(&words)
 	if err != nil {
+		slog.Error("", slog.Any("错误内容", err))
 		return nil
-	} else if !get {
-		slog.Info("没有查找到条目")
 	}
 	slog.Info("查找全部条目")
 	return words
