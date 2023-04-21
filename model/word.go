@@ -39,9 +39,19 @@ func (w Word) CreateOne() {
 }
 
 func (w Word) DeleteAll() {
-	i, err := mysql.GetEngine().NewSession().Where("1 = 1").Table("word").Delete(&Word{})
+	i, err := mysql.GetEngine().NewSession().Where("1 = 1").Delete(&Word{})
 	if err != nil {
 		return
 	}
 	slog.Info("删除记录", slog.Int64("成功条数", i))
+}
+func (w Word) GetAll() (words []Word) {
+	get, err := mysql.GetEngine().NewSession().Where("1 = 1").Get(&words)
+	if err != nil {
+		return nil
+	} else if !get {
+		slog.Info("没有查找到条目")
+	}
+	slog.Info("查找全部条目")
+	return words
 }
