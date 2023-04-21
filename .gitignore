@@ -17,5 +17,6 @@ vendor
 *.log
 .idea
 .DS_Store
+english.txt
 # Go workspace file
 go.work
