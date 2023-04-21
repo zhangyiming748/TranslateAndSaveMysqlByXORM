@@ -72,11 +72,15 @@ type RES struct {
 
 // Verify the endpoint URI and replace the token string with a valid subscription key.
 func main() {
-	l, _ := goini.SetConfig(configPath).GetValue("log", "level")
+	conf := goini.SetConfig(configPath)
+	l, err := conf.GetValue("log", "level")
+	if err != nil {
+		return
+	}
 	SetLog(l)
 	var Query string
 	if len(os.Args) < 2 {
-		open, err := os.ReadFile("english.txt")
+		open, err := os.ReadFile("doc.txt")
 		if err != nil {
 			return
 		}
@@ -86,28 +90,46 @@ func main() {
 		Query = os.Args[1]
 	}
 	w := new(model.Word)
-	w.EnUs = Query
-	word, has, err := w.FindByEnglish()
+	w.Other = Query
+	word, has, err := w.FindByWord()
+	if has {
+		slog.Info("读取缓存")
+	}
+	result, err := os.OpenFile("chinese.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		slog.Error("写入翻译后的文本失败")
+	}
+	defer result.Close()
 	if err != nil {
 		return
 	} else if has {
 		slog.Info("查询结果", slog.String("src", Query), slog.String("dst", word.ZhCn))
+		result.WriteString(strings.Join([]string{word.ZhCn, "\n"}, ""))
+		return
+	}
+	appid, err := conf.GetValue("api", "appid")
+	key, err := conf.GetValue("api", "key")
+	from, err := conf.GetValue("api", "from")
+	if from == "" {
+		from = "auto"
+	}
+	to, err := conf.GetValue("api", "to")
+	if err != nil {
 		return
 	}
 	salt := time.Now().Format("0102150405")
-	sign := strings.Join([]string{"20230419001647901", Query, salt, "n08PMyG5RHk_3NUiXTdq"}, "")
+	sign := strings.Join([]string{appid, Query, salt, key}, "")
 	slog.Debug("加密之前", slog.String("拼接的字符串", sign))
 	signMd5 := getMd5(sign)
 	slog.Debug("加密之后", slog.String("拼接的字符串", signMd5))
 	m := map[string]string{
 		"q":     Query,
-		"from":  "en",
-		"to":    "zh",
-		"appid": "20230419001647901",
+		"from":  from,
+		"to":    to,
+		"appid": appid,
 		"salt":  salt,
 		"sign":  signMd5,
 	}
-	//todo 查询本地数据库 如果存在查询词直接返回
 	slog.Debug("请求的参数", slog.Any("param", m))
 	get, err := util.HttpGet(nil, m, "http://api.fanyi.baidu.com/api/trans/vip/translate")
 	if err != nil {
@@ -118,13 +140,13 @@ func main() {
 	if err != nil {
 		return
 	}
-	//res.TransResult[0].Dst
-	//pretty.P(string(get))
-	fmt.Printf("返回的原文%s", string(get))
-	w.EnUs = res.TransResult[0].Src
+	w.Other = res.TransResult[0].Src
 	w.ZhCn = res.TransResult[0].Dst
+	w.Kind = res.From
 	w.CreateOne()
+	slog.Info("自动判断语言", slog.String("源语言", res.From), slog.String("目标语言", res.To))
 	slog.Info("查询结果", slog.String("src", res.TransResult[0].Src), slog.String("dst", res.TransResult[0].Dst))
+	result.WriteString(strings.Join([]string{res.TransResult[0].Dst, "\n"}, ""))
 }
 func getMd5(str string) string {
 	data := []byte(str)
